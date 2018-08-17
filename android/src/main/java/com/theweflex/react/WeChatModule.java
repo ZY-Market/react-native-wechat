@@ -242,8 +242,16 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         BaseBitmapDataSubscriber dataSubscriber = new BaseBitmapDataSubscriber() {
             @Override
             protected void onNewResultImpl(Bitmap bitmap) {
-                bitmap = bitmap.copy(bitmap.getConfig(), true);
-                imageCallback.invoke(bitmap);
+                try{
+                    if (bitmap.getConfig() == null){
+                        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+                    } else {
+                        bitmap = bitmap.copy(bitmap.getConfig(), true);
+                    }
+                    imageCallback.invoke(bitmap);
+                } catch (Exception e) {
+                    Log.e("WechatShare", "thumbImage图片处理问题");
+                }
             }
 
             @Override
@@ -252,10 +260,12 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             }
         };
 
-        ImageRequestBuilder builder = ImageRequestBuilder.newBuilderWithSource(uri);
+        ImageDecodeOptions imageDecodeOptions = ImageDecodeOptions.newBuilder().setForceStaticImage(true).build();
+        ImageRequestBuilder builder = ImageRequestBuilder.newBuilderWithSource(uri).setImageDecodeOptions(imageDecodeOptions);
         if (resizeOptions != null) {
             builder = builder.setResizeOptions(resizeOptions);
         }
+
         ImageRequest imageRequest = builder.build();
 
         ImagePipeline imagePipeline = Fresco.getImagePipeline();

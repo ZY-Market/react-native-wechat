@@ -40,7 +40,7 @@ or `async/await` to manage your dataflow.
 This method should be called once globally.
 
 ```js
-import * as WeChat from 'react-native-wechat';
+import * as WeChat from 'zy-react-native-wechat';
 
 WeChat.registerApp('appid');
 ```
@@ -123,7 +123,7 @@ Share a `ShareMetadata` message to timeline(朋友圈) and returns:
 These example code need 'react-native-chat' and 'react-native-fs' plugin.
 
 ```js
-import * as WeChat from 'react-native-wechat';
+import * as WeChat from 'zy-react-native-wechat';
 import fs from 'react-native-fs';
 let resolveAssetSource = require('resolveAssetSource');
 
@@ -344,7 +344,7 @@ $ npm install react-native-wechat --save
 
 MIT
 
-[react-native-wechat]: https://github.com/yorkie/react-native-wechat
+[react-native-wechat]: https://github.com/ZY-Market/react-native-wechat
 [npm-image]: https://img.shields.io/npm/v/react-native-wechat.svg?style=flat-square
 [npm-url]: https://npmjs.org/package/react-native-wechat
 [travis-image]: https://img.shields.io/travis/yorkie/react-native-wechat.svg?style=flat-square
