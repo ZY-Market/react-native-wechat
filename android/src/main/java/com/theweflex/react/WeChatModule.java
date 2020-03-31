@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.support.annotation.Nullable;
-import android.util.Log;
 
 import com.facebook.common.executors.UiThreadImmediateExecutorService;
 import com.facebook.common.internal.Files;
@@ -13,7 +12,6 @@ import com.facebook.common.references.CloseableReference;
 import com.facebook.common.util.UriUtil;
 import com.facebook.datasource.DataSource;
 import com.facebook.drawee.backends.pipeline.Fresco;
-import com.facebook.imagepipeline.common.ImageDecodeOptions;
 import com.facebook.imagepipeline.common.ResizeOptions;
 import com.facebook.imagepipeline.core.ImagePipeline;
 import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber;
@@ -28,23 +26,25 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
-import com.tencent.mm.opensdk.constants.Build;
-import com.tencent.mm.opensdk.modelbase.BaseReq;
-import com.tencent.mm.opensdk.modelbase.BaseResp;
-import com.tencent.mm.opensdk.modelmsg.SendAuth;
-import com.tencent.mm.opensdk.modelmsg.SendMessageToWX;
-import com.tencent.mm.opensdk.modelmsg.WXFileObject;
-import com.tencent.mm.opensdk.modelmsg.WXImageObject;
-import com.tencent.mm.opensdk.modelmsg.WXMediaMessage;
-import com.tencent.mm.opensdk.modelmsg.WXMusicObject;
-import com.tencent.mm.opensdk.modelmsg.WXTextObject;
-import com.tencent.mm.opensdk.modelmsg.WXVideoObject;
-import com.tencent.mm.opensdk.modelmsg.WXWebpageObject;
-import com.tencent.mm.opensdk.modelpay.PayReq;
-import com.tencent.mm.opensdk.modelpay.PayResp;
-import com.tencent.mm.opensdk.openapi.IWXAPI;
-import com.tencent.mm.opensdk.openapi.IWXAPIEventHandler;
-import com.tencent.mm.opensdk.openapi.WXAPIFactory;
+import com.tencent.mm.sdk.modelbase.BaseReq;
+import com.tencent.mm.sdk.modelbase.BaseResp;
+import com.tencent.mm.sdk.modelmsg.SendAuth;
+import com.tencent.mm.sdk.modelmsg.SendMessageToWX;
+import com.tencent.mm.sdk.modelmsg.WXFileObject;
+import com.tencent.mm.sdk.modelmsg.WXImageObject;
+import com.tencent.mm.sdk.modelmsg.WXMediaMessage;
+import com.tencent.mm.sdk.modelmsg.WXMusicObject;
+import com.tencent.mm.sdk.modelmsg.WXTextObject;
+import com.tencent.mm.sdk.modelmsg.WXVideoObject;
+import com.tencent.mm.sdk.modelmsg.WXWebpageObject;
+import com.tencent.mm.sdk.modelpay.PayReq;
+import com.tencent.mm.sdk.modelpay.PayResp;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.IWXAPIEventHandler;
+import com.tencent.mm.sdk.openapi.WXAPIFactory;
+
+import java.io.File;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.UUID;
 
@@ -71,14 +71,14 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     /**
      * fix Native module WeChatModule tried to override WeChatModule for module name RCTWeChat.
      * If this was your intention, return true from WeChatModule#canOverrideExistingModule() bug
+     *
      * @return
      */
-    @Override
-    public boolean canOverrideExistingModule(){
+    public boolean canOverrideExistingModule() {
         return true;
     }
 
-    private static ArrayList<com.theweflex.react.WeChatModule> modules = new ArrayList<>();
+    private static ArrayList<WeChatModule> modules = new ArrayList<>();
 
     @Override
     public void initialize() {
@@ -96,7 +96,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     }
 
     public static void handleIntent(Intent intent) {
-        for (com.theweflex.react.WeChatModule mod : modules) {
+        for (WeChatModule mod : modules) {
             mod.api.handleIntent(intent, mod);
         }
     }
@@ -123,7 +123,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             callback.invoke(NOT_REGISTERED);
             return;
         }
-        callback.invoke(null, api.getWXAppSupportAPI()< Build.PAY_SUPPORTED_SDK_INT);
+        callback.invoke(null, api.isWXAppSupportAPI());
     }
 
     @ReactMethod
@@ -184,7 +184,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
     }
 
     @ReactMethod
-    public void pay(ReadableMap data, Callback callback){
+    public void pay(ReadableMap data, Callback callback) {
         PayReq payReq = new PayReq();
         if (data.hasKey("partnerId")) {
             payReq.partnerId = data.getString("partnerId");
@@ -228,10 +228,10 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         }
 
         if (uri != null) {
-            this._getImage(uri, new ResizeOptions(100, 100), new com.theweflex.react.WeChatModule.ImageCallback() {
+            this._getImage(uri, new ResizeOptions(100, 100), new ImageCallback() {
                 @Override
                 public void invoke(@Nullable Bitmap bitmap) {
-                    com.theweflex.react.WeChatModule.this._share(scene, data, bitmap, callback);
+                    WeChatModule.this._share(scene, data, bitmap, callback);
                 }
             });
         } else {
@@ -239,19 +239,20 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         }
     }
 
-    private void _getImage(Uri uri, ResizeOptions resizeOptions, final com.theweflex.react.WeChatModule.ImageCallback imageCallback) {
+    private void _getImage(Uri uri, ResizeOptions resizeOptions, final ImageCallback imageCallback) {
         BaseBitmapDataSubscriber dataSubscriber = new BaseBitmapDataSubscriber() {
             @Override
             protected void onNewResultImpl(Bitmap bitmap) {
-                try{
-                    if (bitmap.getConfig() == null){
-                        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
-                    } else {
+                if (bitmap != null) {
+                    if (bitmap.getConfig() != null) {
                         bitmap = bitmap.copy(bitmap.getConfig(), true);
+                        imageCallback.invoke(bitmap);
+                    } else {
+                        bitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+                        imageCallback.invoke(bitmap);
                     }
-                    imageCallback.invoke(bitmap);
-                } catch (Exception e) {
-                    Log.e("WechatShare", "thumbImage图片处理问题");
+                } else {
+                    imageCallback.invoke(null);
                 }
             }
 
@@ -261,12 +262,10 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             }
         };
 
-        ImageDecodeOptions imageDecodeOptions = ImageDecodeOptions.newBuilder().setForceStaticImage(true).build();
-        ImageRequestBuilder builder = ImageRequestBuilder.newBuilderWithSource(uri).setImageDecodeOptions(imageDecodeOptions);
+        ImageRequestBuilder builder = ImageRequestBuilder.newBuilderWithSource(uri);
         if (resizeOptions != null) {
             builder = builder.setResizeOptions(resizeOptions);
         }
-
         ImageRequest imageRequest = builder.build();
 
         ImagePipeline imagePipeline = Fresco.getImagePipeline();
@@ -307,25 +306,25 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         } else if (type.equals("text")) {
             mediaObject = _jsonToTextMedia(data);
         } else if (type.equals("imageUrl") || type.equals("imageResource")) {
-            __jsonToImageUrlMedia(data, new com.theweflex.react.WeChatModule.MediaObjectCallback() {
+            __jsonToImageUrlMedia(data, new MediaObjectCallback() {
                 @Override
                 public void invoke(@Nullable WXMediaMessage.IMediaObject mediaObject) {
                     if (mediaObject == null) {
                         callback.invoke(INVALID_ARGUMENT);
                     } else {
-                        com.theweflex.react.WeChatModule.this._share(scene, data, thumbImage, mediaObject, callback);
+                        WeChatModule.this._share(scene, data, thumbImage, mediaObject, callback);
                     }
                 }
             });
             return;
         } else if (type.equals("imageFile")) {
-            __jsonToImageFileMedia(data, new com.theweflex.react.WeChatModule.MediaObjectCallback() {
+            __jsonToImageFileMedia(data, new MediaObjectCallback() {
                 @Override
                 public void invoke(@Nullable WXMediaMessage.IMediaObject mediaObject) {
                     if (mediaObject == null) {
                         callback.invoke(INVALID_ARGUMENT);
                     } else {
-                        com.theweflex.react.WeChatModule.this._share(scene, data, thumbImage, mediaObject, callback);
+                        WeChatModule.this._share(scene, data, thumbImage, mediaObject, callback);
                     }
                 }
             });
@@ -400,7 +399,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         return ret;
     }
 
-    private void __jsonToImageMedia(String imageUrl, final com.theweflex.react.WeChatModule.MediaObjectCallback callback) {
+    private void __jsonToImageMedia(String imageUrl, final MediaObjectCallback callback) {
         Uri imageUri;
         try {
             imageUri = Uri.parse(imageUrl);
@@ -417,7 +416,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
             return;
         }
 
-        this._getImage(imageUri, null, new com.theweflex.react.WeChatModule.ImageCallback() {
+        this._getImage(imageUri, null, new ImageCallback() {
             @Override
             public void invoke(@Nullable Bitmap bitmap) {
                 callback.invoke(bitmap == null ? null : new WXImageObject(bitmap));
@@ -425,7 +424,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         });
     }
 
-    private void __jsonToImageUrlMedia(ReadableMap data, com.theweflex.react.WeChatModule.MediaObjectCallback callback) {
+    private void __jsonToImageUrlMedia(ReadableMap data, MediaObjectCallback callback) {
         if (!data.hasKey("imageUrl")) {
             callback.invoke(null);
             return;
@@ -434,7 +433,7 @@ public class WeChatModule extends ReactContextBaseJavaModule implements IWXAPIEv
         __jsonToImageMedia(imageUrl, callback);
     }
 
-    private void __jsonToImageFileMedia(ReadableMap data, com.theweflex.react.WeChatModule.MediaObjectCallback callback) {
+    private void __jsonToImageFileMedia(ReadableMap data, MediaObjectCallback callback) {
         if (!data.hasKey("imageUrl")) {
             callback.invoke(null);
             return;
