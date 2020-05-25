@@ -96,6 +96,14 @@ export const removeAllListeners = emitter.removeAllListeners.bind(emitter);
 export const registerApp = wrapRegisterApp(WeChat.registerApp);
 
 /**
+ * @method registerAppWithUniversalLink
+ * @param {String} appid - the app id
+ * @param {String} universalLink - ios
+ * @return {Promise}
+ */
+export const registerAppWithUniversalLink = wrapRegisterApp(WeChat.registerAppWithUniversalLink);
+
+/**
  * @method registerAppWithDescription
  * @param {String} appid - the app id
  * @param {String} appdesc - the app description
@@ -267,7 +275,7 @@ export function pay(data) {
   correct('noncestr', 'nonceStr');
   correct('partnerid', 'partnerId');
   correct('timestamp', 'timeStamp');
-  
+
   // FIXME(94cstyles)
   // Android requires the type of the timeStamp field to be a string
   if (Platform.OS === 'android') data.timeStamp = String(data.timeStamp)

@@ -1,5 +1,9 @@
 declare module "react-native-wechat" {
   export function registerApp(appId: string): Promise<boolean>;
+  export function registerAppWithUniversalLink(
+    appId: string,
+    universalLink: string
+  ): Promise<boolean>;
   export function registerAppWithDescription(
     appId: string,
     desc: string
